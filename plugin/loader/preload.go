@@ -3,6 +3,7 @@ package loader
 import (
 	pluginbadgerds "github.com/ipfs/kubo/plugin/plugins/badgerds"
 	pluginiplddagjose "github.com/ipfs/kubo/plugin/plugins/dagjose"
+	pluginds_http "github.com/ipfs/kubo/plugin/plugins/ds_http"
 	pluginflatfs "github.com/ipfs/kubo/plugin/plugins/flatfs"
 	pluginfxtest "github.com/ipfs/kubo/plugin/plugins/fxtest"
 	pluginipldgit "github.com/ipfs/kubo/plugin/plugins/git"
@@ -24,4 +25,5 @@ func init() {
 	Preload(pluginpeerlog.Plugins...)
 	Preload(pluginfxtest.Plugins...)
 	Preload(pluginnopfs.Plugins...)
+	Preload(pluginds_http.Plugins...)
 }

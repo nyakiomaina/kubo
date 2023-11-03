@@ -25,7 +25,5 @@ func (cfg *HttpConfig) ConfigFromMap(m map[string]interface{}) error {
 }
 
 func (cfg *HttpConfig) Create(path string) (repo.Datastore, error) {
-	// Implement the creation of the HTTP datastore and return it here.
-	// This is a placeholder and will need to be replaced with actual logic.
-	return nil, nil
+	return NewHttpDatastore(), nil
 }

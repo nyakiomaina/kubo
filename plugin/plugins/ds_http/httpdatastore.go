@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
 )
 
 type HttpDatastore struct {
@@ -37,6 +38,20 @@ func NewHttpDatastore() *HttpDatastore {
 	}
 }
 
+func (s *HttpDatastore) Batch(_ context.Context) (ds.Batch, error) {
+	return nil, nil
+}
+func (s *HttpDatastore) Close() error {
+	return nil
+}
+
+func (s *HttpDatastore) GetSize(ctx context.Context, k ds.Key) (size int, err error) {
+	return 0, nil
+}
+
+func (s *HttpDatastore) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
+	return nil, nil
+}
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
 	// API provided by cartesi machine? or communicate with it
 	req, err := http.NewRequest("PUT", h.serverURL+"/put/"+key.String(), bytes.NewReader(value))
@@ -54,6 +69,9 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 		return errors.New("Failed to PUT data to the server")
 	}
 
+	return nil
+}
+func (s *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
 	return nil
 }
 
