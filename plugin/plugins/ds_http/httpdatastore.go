@@ -113,3 +113,44 @@ func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
 func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (exists bool, err error) {
 	return true, nil
 }
+
+// fetch data from IPFS given the CID
+func (h *HttpDatastore) GetByCID(ctx context.Context, cid string) ([]byte, error) {
+	resp, err := h.client.Get(h.serverURL + "/ipfs/" + cid)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to GET data from IPFS")
+	}
+
+	return ioutil.ReadAll(resp.Body)
+}
+
+// upload data to IPFS and return the CID of the uploaded file
+func (h *HttpDatastore) PostState(ctx context.Context, state []byte) (string, error) {
+	req, err := http.NewRequest("POST", h.serverURL+"/ipfs/", bytes.NewReader(state))
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("failed to POST state to IPFS")
+	}
+
+	//read the CID from the response
+	cid, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(cid), nil
+}

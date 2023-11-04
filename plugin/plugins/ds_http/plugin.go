@@ -37,23 +37,3 @@ func (p *HttpPlugin) DatastoreConfigParser() fsrepo.ConfigFromMap {
 var Plugins = []plugin.Plugin{
 	&HttpPlugin{},
 }
-
-// Comment out or remove these redefined methods and struct from this file
-
-// type HttpConfig struct {
-// 	// ... your fields
-// }
-
-// var _ fsrepo.DatastoreConfig = (*HttpConfig)(nil)
-
-// func (cfg *HttpConfig) DiskSpec() fsrepo.DiskSpec {
-// 	...
-// }
-
-// func (cfg *HttpConfig) Create(path string) (repo.Datastore, error) {
-// 	...
-// }
-
-// func (cfg *HttpConfig) ConfigFromMap(m map[string]interface{}) error {
-// 	...
-// }
