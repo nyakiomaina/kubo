@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ipfs/boxo/datastore/dshelp"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 )
@@ -19,9 +21,8 @@ type HttpDatastore struct {
 }
 
 func NewHttpDatastore(serverURL string) *HttpDatastore {
-	fmt.Println("Initializing HttpDatastore for testing with httpbin...")
 	return &HttpDatastore{
-		serverURL: "https://httpbin.org",
+		serverURL: "http://127.0.0.1:9500",
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -53,15 +54,21 @@ func (h *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
 }
 
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
-	fullURL := h.serverURL + "/anything/" + key.String()
+	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
+	if err != nil {
+		return fmt.Errorf("failed to convert key to CID: %v", err)
+	}
+	cidStr := cidV1.String()
+
+	fullURL := h.serverURL + "/put/" + cidStr
 	req, err := http.NewRequestWithContext(ctx, "PUT", fullURL, bytes.NewReader(value))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create PUT request: %v", err)
 	}
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute PUT request: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -70,12 +77,18 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 		return fmt.Errorf("server responded with an error: %v, body: %s", resp.Status, string(body))
 	}
 
-	fmt.Println("PUT request to:", fullURL)
+	fmt.Printf("PUT request successful for key: %s with CIDv1: %s\n", key, cidStr)
 	return nil
 }
 
 func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
-	fullURL := h.serverURL + "/anything/" + key.String()
+	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert key to CID: %v", err)
+	}
+	cidStr := cidV1.String()
+
+	fullURL := h.serverURL + "/get/" + cidStr
 	resp, err := h.client.Get(fullURL)
 	if err != nil {
 		return nil, err
@@ -87,27 +100,10 @@ func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err 
 		return nil, fmt.Errorf("server responded with an error: %v, body: %s", resp.Status, string(body))
 	}
 
-	fmt.Println("GET request to:", fullURL)
+	fmt.Printf("GET request successful for key: %s with CIDv1: %s\n", key, cidStr)
 	return ioutil.ReadAll(resp.Body)
 }
 
 func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
-	req, err := http.NewRequestWithContext(ctx, "HEAD", h.serverURL+"/has/"+key.String(), nil)
-	if err != nil {
-		return false, err
-	}
-
-	resp, err := h.client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return true, nil
-	} else if resp.StatusCode == http.StatusNotFound {
-		return false, nil
-	} else {
-		return false, fmt.Errorf("unexpected HTTP status code: %d", resp.StatusCode)
-	}
+	return true, nil
 }
