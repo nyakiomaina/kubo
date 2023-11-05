@@ -10,54 +10,51 @@ import (
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
-	dsq "github.com/ipfs/go-datastore/query"
+	"github.com/ipfs/go-datastore/query"
 )
 
 type HttpDatastore struct {
 	serverURL string
 	client    *http.Client
-
-	localDatastore map[ds.Key][]byte
 }
 
-// func NewHttpDatastore(serverURL string) *HttpDatastore {
-// 	fmt.Println("Initializing HttpDatastore for IPFS daemon...")
-// 	return &HttpDatastore{
-// 		serverURL: serverURL,
-// 		client: &http.Client{
-// 			Timeout: 30 * time.Second,
-// 		},
-// 	}
-// }
-
-func NewHttpDatastore() *HttpDatastore {
+func NewHttpDatastore(serverURL string) *HttpDatastore {
 	fmt.Println("Initializing HttpDatastore for testing with httpbin...")
 	return &HttpDatastore{
 		serverURL: "https://httpbin.org",
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		localDatastore: make(map[ds.Key][]byte),
 	}
 }
 
-func (s *HttpDatastore) Batch(_ context.Context) (ds.Batch, error) {
-	return nil, nil
-}
-func (s *HttpDatastore) Close() error {
-	return nil
+func (s *HttpDatastore) Batch(ctx context.Context) (ds.Batch, error) {
+	return nil, errors.New("Batch not implemented")
 }
 
-func (s *HttpDatastore) GetSize(ctx context.Context, k ds.Key) (size int, err error) {
-	return 0, nil
+func (h *HttpDatastore) Close() error {
+	return errors.New("Close not implemented")
 }
 
-func (s *HttpDatastore) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
-	return nil, nil
+func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
+	return errors.New("Delete not implemented")
 }
-// Put sends the given value to the HTTP server to be stored under the specified key.
+
+func (h *HttpDatastore) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
+	return -1, errors.New("GetSize not implemented")
+}
+
+func (h *HttpDatastore) Query(ctx context.Context, q query.Query) (query.Results, error) {
+	return nil, errors.New("Query not implemented")
+}
+
+func (h *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
+	return errors.New("Sync not implemented")
+}
+
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
-	req, err := http.NewRequestWithContext(ctx, "PUT", h.serverURL+"/put/"+key.String(), bytes.NewReader(value))
+	fullURL := h.serverURL + "/anything/" + key.String()
+	req, err := http.NewRequestWithContext(ctx, "PUT", fullURL, bytes.NewReader(value))
 	if err != nil {
 		return err
 	}
@@ -69,94 +66,48 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("server responded with an error")
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("server responded with an error: %v, body: %s", resp.Status, string(body))
 	}
-	return nil
-}
-func (s *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
+
+	fmt.Println("PUT request to:", fullURL)
 	return nil
 }
 
 func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
-	resp, err := h.client.Get(h.serverURL + "/get/" + key.String())
+	fullURL := h.serverURL + "/anything/" + key.String()
+	resp, err := h.client.Get(fullURL)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("server responded with an error")
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server responded with an error: %v, body: %s", resp.Status, string(body))
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-
-func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
-
-	req, err := http.NewRequest("DELETE", h.serverURL+"/delete/"+key.String(), nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := h.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("Failed to DELETE data from the server")
-	}
-
-	return nil
-}
-
-func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (exists bool, err error) {
-	return true, nil
-}
-
-// fetch data from IPFS given the CID
-func (h *HttpDatastore) GetByCID(ctx context.Context, cid string) ([]byte, error) {
-	resp, err := h.client.Get(h.serverURL + "/ipfs/" + cid)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("failed to GET data from IPFS")
-	}
-
+	fmt.Println("GET request to:", fullURL)
 	return ioutil.ReadAll(resp.Body)
 }
 
-// upload data to IPFS and return the CID of the uploaded file
-func (h *HttpDatastore) PostState(ctx context.Context, state []byte) (string, error) {
-	req, err := http.NewRequest("POST", h.serverURL+"/ipfs/", bytes.NewReader(state))
+func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, "HEAD", h.serverURL+"/has/"+key.String(), nil)
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		return "", err
+		return false, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("failed to POST state to IPFS")
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("unexpected HTTP status code: %d", resp.StatusCode)
 	}
-
-	//read the CID from the response
-	cid, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(cid), nil
 }
