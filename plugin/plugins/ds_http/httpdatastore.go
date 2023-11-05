@@ -16,6 +16,8 @@ import (
 type HttpDatastore struct {
 	serverURL string
 	client    *http.Client
+
+	localDatastore map[ds.Key][]byte
 }
 
 // func NewHttpDatastore(serverURL string) *HttpDatastore {
@@ -35,6 +37,7 @@ func NewHttpDatastore() *HttpDatastore {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		localDatastore: make(map[ds.Key][]byte),
 	}
 }
 
@@ -52,9 +55,9 @@ func (s *HttpDatastore) GetSize(ctx context.Context, k ds.Key) (size int, err er
 func (s *HttpDatastore) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
 	return nil, nil
 }
+// Put sends the given value to the HTTP server to be stored under the specified key.
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
-	// API provided by cartesi machine? or communicate with it
-	req, err := http.NewRequest("PUT", h.serverURL+"/put/"+key.String(), bytes.NewReader(value))
+	req, err := http.NewRequestWithContext(ctx, "PUT", h.serverURL+"/put/"+key.String(), bytes.NewReader(value))
 	if err != nil {
 		return err
 	}
@@ -66,9 +69,8 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("Failed to PUT data to the server")
+		return errors.New("server responded with an error")
 	}
-
 	return nil
 }
 func (s *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
@@ -76,7 +78,6 @@ func (s *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
 }
 
 func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
-
 	resp, err := h.client.Get(h.serverURL + "/get/" + key.String())
 	if err != nil {
 		return nil, err
@@ -84,11 +85,16 @@ func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, ds.ErrNotFound
+		return nil, errors.New("server responded with an error")
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
+
 
 func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
 
