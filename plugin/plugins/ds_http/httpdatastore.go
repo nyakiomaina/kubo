@@ -58,6 +58,7 @@ func (h *HttpDatastore) Push(ctx context.Context, prefix ds.Key) error {
 }
 
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
+	fmt.Println("put")
 	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
 	if err != nil {
 		return fmt.Errorf("failed to convert key to CID: %v", err)
@@ -86,6 +87,7 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 }
 
 func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
+	fmt.Println("get")
 	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert key to CID: %v", err)
