@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ipfs/boxo/datastore/dshelp"
@@ -20,9 +21,16 @@ type HttpDatastore struct {
 	client    *http.Client
 }
 
-func NewHttpDatastore(serverURL string) *HttpDatastore {
+func NewHttpDatastore() *HttpDatastore {
+	var serverURL string
+	if envURL := os.Getenv("HTTP_DATASTORE_URL"); envURL != "" {
+		serverURL = envURL
+	} else {
+		serverURL = "http://127.0.0.1:9500"
+	}
+
 	return &HttpDatastore{
-		serverURL: "http://127.0.0.1:9500",
+		serverURL: serverURL,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -71,6 +79,8 @@ func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error
 		return fmt.Errorf("failed to create PUT request: %v", err)
 	}
 
+	req.Header.Set("Content-Type", "application/octet-stream")
+
 	resp, err := h.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to execute PUT request: %v", err)
@@ -110,6 +120,29 @@ func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err 
 	return ioutil.ReadAll(resp.Body)
 }
 
+// func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
+// 	return true, nil
+// }
+
 func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
-	return true, nil
+	fmt.Println("Has called with key:", key)
+
+	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
+	if err != nil {
+		return false, fmt.Errorf("failed to convert key to CID V1: %s", err)
+	}
+
+	fullURL := h.serverURL + "/has/" + cidV1.String()
+	req, err := http.NewRequestWithContext(ctx, "HEAD", fullURL, nil)
+	if err != nil {
+		return false, fmt.Errorf("creating HEAD request failed: %s", err)
+	}
+
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("executing HEAD request failed: %s", err)
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK, nil
 }
