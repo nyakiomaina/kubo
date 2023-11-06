@@ -34,11 +34,11 @@ func (s *HttpDatastore) Batch(ctx context.Context) (ds.Batch, error) {
 }
 
 func (h *HttpDatastore) Close() error {
-	return errors.New("Close not implemented")
+	return nil
 }
 
 func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
-	return errors.New("Delete not implemented")
+	return nil
 }
 
 func (h *HttpDatastore) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
@@ -50,7 +50,11 @@ func (h *HttpDatastore) Query(ctx context.Context, q query.Query) (query.Results
 }
 
 func (h *HttpDatastore) Sync(ctx context.Context, prefix ds.Key) error {
-	return errors.New("Sync not implemented")
+	return nil
+}
+
+func (h *HttpDatastore) Push(ctx context.Context, prefix ds.Key) error {
+	return nil
 }
 
 func (h *HttpDatastore) Put(ctx context.Context, key ds.Key, value []byte) error {
