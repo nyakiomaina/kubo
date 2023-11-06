@@ -50,7 +50,7 @@ func (h *HttpDatastore) Delete(ctx context.Context, key ds.Key) error {
 }
 
 func (h *HttpDatastore) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
-	return -1, errors.New("GetSize not implemented")
+	return -1, nil
 }
 
 func (h *HttpDatastore) Query(ctx context.Context, q query.Query) (query.Results, error) {
@@ -125,12 +125,12 @@ func (h *HttpDatastore) Get(ctx context.Context, key ds.Key) (value []byte, err 
 // }
 
 func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
-	fmt.Println("Has called with key:", key)
-
 	cidV1, err := dshelp.DsKeyToCidV1(key, cid.DagProtobuf)
 	if err != nil {
 		return false, fmt.Errorf("failed to convert key to CID V1: %s", err)
 	}
+
+	fmt.Printf("Decoded CID V1: %s\n", cidV1)
 
 	fullURL := h.serverURL + "/has/" + cidV1.String()
 	req, err := http.NewRequestWithContext(ctx, "HEAD", fullURL, nil)
@@ -143,6 +143,11 @@ func (h *HttpDatastore) Has(ctx context.Context, key ds.Key) (bool, error) {
 		return false, fmt.Errorf("executing HEAD request failed: %s", err)
 	}
 	defer resp.Body.Close()
+	exists := resp.StatusCode == http.StatusOK
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		return false, fmt.Errorf("unexpected HTTP status code: %d", resp.StatusCode)
+	}
+	fmt.Printf("CIDV1: %s exists: %t\n", cidV1, exists)
 
-	return resp.StatusCode == http.StatusOK, nil
+	return exists, nil
 }
